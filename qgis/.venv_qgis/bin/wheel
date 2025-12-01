@@ -1,0 +1,7 @@
+#!/Users/sell/work/code_work/daina_project/qgis/.venv_qgis/bin/python3
+import sys
+from wheel.cli import main
+if __name__ == '__main__':
+    if sys.argv[0].endswith('.exe'):
+        sys.argv[0] = sys.argv[0][:-4]
+    sys.exit(main())

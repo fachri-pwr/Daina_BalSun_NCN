@@ -1,0 +1,6 @@
+[console_scripts]
+suews-run = supy.cmd.SUEWS:SUEWS
+suews-convert = supy.cmd.table_converter:convert_table_cmd
+suews-validate = supy.cmd.validate_config:main
+suews-schema = supy.cmd.schema_cli:main
+

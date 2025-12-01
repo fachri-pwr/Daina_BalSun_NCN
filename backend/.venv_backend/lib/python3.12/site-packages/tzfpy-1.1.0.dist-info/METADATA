@@ -1,0 +1,32 @@
+Metadata-Version: 2.4
+Name: tzfpy
+Version: 1.1.0
+Classifier: Programming Language :: Rust
+Classifier: Programming Language :: Python :: Implementation :: CPython
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Scientific/Engineering :: GIS
+Classifier: Operating System :: OS Independent
+Requires-Dist: pytz>=2025.2 ; extra == 'pytz'
+Requires-Dist: tzdata>=2025.2 ; extra == 'tzdata'
+Provides-Extra: pytz
+Provides-Extra: tzdata
+License-File: LICENSE
+License-File: LICENSE_ANTI_CSDN.md
+Summary: Probably the fastest Python package to convert longitude/latitude to timezone name
+Keywords: tzf,timezone,timezone-name,timezone-lookup,gps,gps-coordinates,gps-location,longitude,latitude
+Author-email: ringsaturn <ringsaturn.me@gmail.com>
+Maintainer-email: ringsaturn <ringsaturn.me@gmail.com>
+License-Expression: MIT
+Requires-Python: >=3.10
+Project-URL: Documentation, https://github.com/ringsaturn/tzfpy
+Project-URL: Issues, https://github.com/ringsaturn/tzfpy/issues
+Project-URL: Source Code, https://github.com/ringsaturn/tzfpy
+Project-URL: Online Demo, https://ringsaturn.github.io/tzf-web/
+Project-URL: Benchmark Results, https://github.com/ringsaturn/tz-benchmark

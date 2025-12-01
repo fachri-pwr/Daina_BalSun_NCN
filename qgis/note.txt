@@ -1,0 +1,9 @@
+# create the virtual environment
+/Applications/QGIS-LTR.app/Contents/MacOS/bin/python3 -m venv --system-site-packages .venv_qgis
+source .venv_qgis/bin/activate
+
+# Extract the data
+ python main.py --input-path ../../data/input --output-path ../../data/output_new_250m --h-space 250  --v-space 250
+
+#prepare the finalscore data
+python PV_FinalScore.py --input-path ../../data/output_new_250m  --output-path ../../data/output_new_250m

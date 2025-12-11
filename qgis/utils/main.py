@@ -62,6 +62,7 @@ print("QGIS version:", Qgis.QGIS_VERSION)
 # Initialize processing framework
 import processing
 from processing.core.Processing import Processing
+import json
 
 Processing.initialize()
 print("Processing framework OK")
@@ -548,6 +549,9 @@ def runner_PvLandUseRatio(input_vector: str,
     print("calculated land ratio Done ->", result.get(Pv_landuseratio.P_OUT))
 
 
+
+
+
 ### ================================== clipped  ================================= ###
 
 
@@ -641,7 +645,51 @@ def gdf_to_qgs_geojson(gdf, name="layer"):
     return QgsVectorLayer(tmp.name, name, "ogr")
 
 
-def save_geojson_and_csv(geojson_path: Path, keep_geometry: bool = False):
+# def save_geojson_and_csv(geojson_path: Path, keep_geometry: bool = False):
+#     """Read a GeoJSON file and save it as CSV.
+#
+#     Args:
+#         geojson_path: Path to the GeoJSON file
+#         keep_geometry: If True, keeps geometry as JSON string in CSV. If False, drops geometry.
+#     """
+#     try:
+#         import json
+#
+#         # Read GeoJSON as plain JSON
+#         with open(geojson_path, 'r') as f:
+#             geojson_data = json.load(f)
+#
+#         # Extract properties from features
+#         records = []
+#         for feature in geojson_data.get('features', []):
+#             props = feature.get('properties', {})
+#
+#             if props:
+#                 # Add geometry if requested
+#                 if keep_geometry:
+#                     geometry = feature.get('geometry', {})
+#                     if geometry:
+#                         props['geometry'] = json.dumps(geometry)
+#
+#                 records.append(props)
+#
+#         # Create DataFrame and save
+#         if records:
+#             df = pd.DataFrame(records)
+#             csv_path = geojson_path.with_suffix('.csv')
+#             df.to_csv(csv_path, index=False)
+#             print(f"  → Saved CSV: {csv_path}")
+#         else:
+#             print(f"  ⚠ Warning: No records found in {geojson_path}")
+#
+#     except Exception as e:
+#         print(f"  ⚠ Warning: Could not save CSV for {geojson_path}: {e}")
+
+
+
+
+
+def save_geojson_and_csv(geojson_path: Path, keep_geometry: bool = False, model_name: str = None, region_name: str = None, id_name: str = None):
     """Read a GeoJSON file and save it as CSV.
 
     Args:
@@ -649,7 +697,7 @@ def save_geojson_and_csv(geojson_path: Path, keep_geometry: bool = False):
         keep_geometry: If True, keeps geometry as JSON string in CSV. If False, drops geometry.
     """
     try:
-        import json
+
 
         # Read GeoJSON as plain JSON
         with open(geojson_path, 'r') as f:
@@ -672,9 +720,29 @@ def save_geojson_and_csv(geojson_path: Path, keep_geometry: bool = False):
         # Create DataFrame and save
         if records:
             df = pd.DataFrame(records)
+            df['region_name'] = region_name
+            df.rename(columns={'id': id_name}, inplace=True)
             csv_path = geojson_path.with_suffix('.csv')
             df.to_csv(csv_path, index=False)
             print(f"  → Saved CSV: {csv_path}")
+        if model_name != None:
+            json_path = geojson_path.with_suffix('.json')
+            # Convert DataFrame to list of dicts (records)
+            df_records = df.to_dict(orient='records')
+            # Create fixture
+            result = []
+            for i, record in enumerate(df_records, start=1):
+                obj = {
+                    "model": model_name,  # e.g., "app.person"
+                    "pk": i,  # assign sequential IDs
+                    "fields": record
+                }
+                result.append(obj)
+            # Save to JSON
+            with open(json_path, 'w', encoding='utf-8') as f:
+                json.dump(result, f, indent=2)
+
+            print(f"  → Saved JSON: {json_path}")
         else:
             print(f"  ⚠ Warning: No records found in {geojson_path}")
 
@@ -703,6 +771,7 @@ def run_pipeline(args):
     h_space = args.h_space
     v_space = args.v_space
     operator_name = args.operator
+    region_name = args.region_name
 
     ### Extract path
     box_path = output_path / "box.geojson"
@@ -713,11 +782,12 @@ def run_pipeline(args):
     centroid_score_box2plant = output_path / "centroid_score_box2plant.geojson"
     centroid_score_box2railway = output_path / "centroid_score_box2railway.geojson"
     centroid_score_box2road = output_path / "centroid_score_box2road.geojson"
-
     dni_zonal_path = output_path / "dni_zonal.geojson"
     pvout_zonal_path = output_path / "pvout_zonal.geojson"
     temp_zonal_path = output_path / "temp_zonal.geojson"
     dem_zonal_path = output_path / "dem_zonal.geojson"
+    final_mcdm_score_path = output_path / "final_mcdm_score.csv"
+
 
     # allow choosing steps (0..8) or 'all'
     steps_to_run = set()
@@ -751,79 +821,83 @@ def run_pipeline(args):
         box_path.parent.mkdir(parents=True, exist_ok=True)
         print(f"Step 1: Creating box grid → {box_path}")
         runner_PvCreateGrid(str(boundary_path), str(box_path), h_space, v_space)
-        save_geojson_and_csv(box_path, keep_geometry=True)
+        save_geojson_and_csv(box_path, keep_geometry=True, model_name='data.Box', region_name=region_name, id_name='osm_box_id')
 
     # 2) Create centroid box
     if should_run(centroid_box_path, "2"):
         centroid_box_path.parent.mkdir(parents=True, exist_ok=True)
         print(f"Step 2: Creating centroid box → {centroid_box_path}")
         runner_PvCreateCentroid(str(box_path), str(centroid_box_path))
-        save_geojson_and_csv(centroid_box_path,keep_geometry=False)
+        save_geojson_and_csv(centroid_box_path,keep_geometry=True, model_name='data.CentroidBox', region_name=region_name, id_name='osm_centroid_box_id')
 
     # 3) Calculate distance centroid box-dso
     if should_run(centroid_score_box2dso, "3"):
         centroid_score_box2dso.parent.mkdir(parents=True, exist_ok=True)
         print(f"Step 3: Creating score centroid box-dso → {centroid_score_box2dso}")
         runner_PV_Box2Dso(str(centroid_box_path), str(centroid_dso_path), str(centroid_score_box2dso))
-        save_geojson_and_csv(centroid_score_box2dso,keep_geometry=False)
+        save_geojson_and_csv(centroid_score_box2dso,keep_geometry=True, model_name='data.CentroidBox2Dso', region_name=region_name, id_name='osm_box2dso_id')
 
     # 4) calculate distance centroid box-plant
     if should_run(centroid_score_box2plant, "4"):
         centroid_score_box2plant.parent.mkdir(parents=True, exist_ok=True)
         print(f"Step 4: Creating score centroid box-plant → {centroid_score_box2plant}")
         runner_PV_Box2Plant(str(centroid_box_path), str(centroid_plant_path),'solar',str(centroid_score_box2plant))
-        save_geojson_and_csv(centroid_score_box2plant,keep_geometry=False)
+        save_geojson_and_csv(centroid_score_box2plant,keep_geometry=True, model_name='data.CentroidBox2Plant', region_name=region_name, id_name='osm_box2plant_id')
 
     # 5) calculate distance centroid box-railway
     if should_run(centroid_score_box2railway, "5"):
         centroid_score_box2railway.parent.mkdir(parents=True, exist_ok=True)
         print(f"Step 5: Creating score centroid box-railway → {centroid_score_box2railway}")
         runner_PV_Box2Railway(str(centroid_box_path), str(centroid_railway_path),str(centroid_score_box2railway))
-        save_geojson_and_csv(centroid_score_box2railway,keep_geometry=False)
+        save_geojson_and_csv(centroid_score_box2railway,keep_geometry=True, model_name='data.CentroidBox2Railway', region_name=region_name, id_name='osm_box2railway_id')
 
     # 6) calculate distance centroid box-road vertices
     if should_run(centroid_score_box2road, "6"):
         centroid_score_box2road.parent.mkdir(parents=True, exist_ok=True)
         print(f"Step 6: Creating score centroid box-road → {centroid_score_box2road}")
         runner_PV_Box2Road(str(centroid_box_path), str(centroid_road_path), str(centroid_score_box2road))
-        save_geojson_and_csv(centroid_score_box2road,keep_geometry=False)
+        save_geojson_and_csv(centroid_score_box2road,keep_geometry=True, model_name='data.CentroidBox2Road', region_name=region_name, id_name='osm_box2road_id')
 
     # 7) Extracting DNI
     if should_run(dni_zonal_path, "7"):
         dni_zonal_path.parent.mkdir(parents=True, exist_ok=True)
         print(f"Step 7: Extracting DNI → {dni_zonal_path}")
         runner_PvZonalStatistic(str(box_path), str(dni_raster_path), str(dni_zonal_path))
-        save_geojson_and_csv(dni_zonal_path,keep_geometry=False)
+        save_geojson_and_csv(dni_zonal_path,keep_geometry=True, model_name='data.Dni', region_name=region_name, id_name='osm_dni_id')
 
     # 8) Extracting PVOUT
     if should_run(pvout_zonal_path, "8"):
         pvout_zonal_path.parent.mkdir(parents=True, exist_ok=True)
         print(f"Step 8: Extracting PVOUT → {pvout_zonal_path}")
         runner_PvZonalStatistic(str(box_path), str(pvout_raster_path), str(pvout_zonal_path))
-        save_geojson_and_csv(pvout_zonal_path,keep_geometry=False)
+        save_geojson_and_csv(pvout_zonal_path,keep_geometry=True, model_name='data.Pvout', region_name=region_name, id_name='osm_pvout_id')
 
     # 9) Extracting Temperature
     if should_run(temp_zonal_path, "9"):
         temp_zonal_path.parent.mkdir(parents=True, exist_ok=True)
         print(f"Step 9: Extracting TEMP → {temp_zonal_path}")
         runner_PvZonalStatistic(str(box_path), str(temp_raster_path), str(temp_zonal_path))
-        save_geojson_and_csv(temp_zonal_path,keep_geometry=False)
+        save_geojson_and_csv(temp_zonal_path,keep_geometry=True, model_name='data.Temp', region_name=region_name, id_name='osm_temp_id')
 
     # 10) Extracting DEM
     if should_run(dem_zonal_path, "10"):
         dem_zonal_path.parent.mkdir(parents=True, exist_ok=True)
         print(f"Step 10: Extracting DEM → {dem_zonal_path}")
         runner_PvZonalStatistic(str(box_path), str(dem_raster_path), str(dem_zonal_path))
-        save_geojson_and_csv(dem_zonal_path,keep_geometry=False)
+        save_geojson_and_csv(dem_zonal_path,keep_geometry=True, model_name='data.Dem', region_name=region_name, id_name='osm_dem_id')
 
     # 11) Calculate land ratio (kept as separate logical step)
     if should_run(land_ratio_path, "11"):
         land_ratio_path.parent.mkdir(parents=True, exist_ok=True)
         print(f"Step 11: Extracting Land ratio → {land_ratio_path}")
         runner_PvLandUseRatio(str(box_path), str(land_use_path), str(land_ratio_path))
-        save_geojson_and_csv(land_ratio_path,keep_geometry=False)
-
+        save_geojson_and_csv(land_ratio_path,keep_geometry=True, model_name='data.LandRatio', region_name=region_name, id_name='osm_land_id')
     print("Done. The algorithm has finished.")
+    #
+    # # 12) get the final score
+    # if should_run(final_mcdm_score_path, "12"):
+    #     final_mcdm_score_path.parent.mkdir(parents=True, exist_ok=True)
+
 
 
 if __name__ == "__main__":
@@ -840,6 +914,9 @@ if __name__ == "__main__":
     parser.add_argument("--v-space", type=float, default=250.0, help="Vertical spacing for grid (default: 250.0)")
     parser.add_argument("--operator", type=str, default="tauron",
                         help='Operator name when extracting DSO centroids (default: "tauron")')
+
+    parser.add_argument("--region_name", type=str,
+                        help='region name for the extracting plance')
 
     # steps: allow names/numbers; user can pass multiple e.g. --steps 1 5 6  or --steps all
     parser.add_argument("--steps", nargs="+", help='Steps to run, e.g. 0 1 2 or "all" (default: all)')

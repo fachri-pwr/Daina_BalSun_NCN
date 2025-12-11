@@ -80,9 +80,9 @@ WSGI_APPLICATION = 'dashboard.wsgi.application'
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "daina_db",
-        "USER": "sell",
-        "PASSWORD": "",
+        "NAME": "daina_DB",
+        "USER": "postgres",
+        "PASSWORD": "290894",
         "HOST": "localhost",
         "PORT": "5432",
     }

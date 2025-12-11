@@ -3,12 +3,31 @@ import re
 import zipfile
 import xml.etree.ElementTree as ET
 from typing import Optional, List, Tuple
+import sys
+
+
+# Point Shapely to GEOS inside the QGIS app bundle (you found this path)
+os.environ["SHAPELY_LIBRARY_PATH"] = "/Applications/QGIS-LTR.app/Contents/MacOS/lib/libgeos_c.dylib"
+
+# Point PROJ and GDAL data to QGIS bundle
+os.environ["PROJ_LIB"] = "/Applications/QGIS-LTR.app/Contents/Resources/proj"
+os.environ["GDAL_DATA"] = "/Applications/QGIS-LTR.app/Contents/Resources/gdal"
+
+# Help macOS dynamic loader find QGIS libraries
+os.environ["DYLD_FALLBACK_LIBRARY_PATH"] = "/Applications/QGIS-LTR.app/Contents/MacOS/lib:" + os.environ.get(
+    "DYLD_FALLBACK_LIBRARY_PATH", "")
+
+# Add QGIS Python paths (keep these before importing QGIS/geopandas)
+PYTHON_PATH = "/Applications/QGIS-LTR.app/Contents/Resources/python"
+PLUGIN_PATH = "/Applications/QGIS-LTR.app/Contents/Resources/python/plugins"
+SITE_PACKAGES = "/Applications/QGIS-LTR.app/Contents/MacOS/lib/python3.9/site-packages"
+sys.path[:0] = [PYTHON_PATH, PLUGIN_PATH, SITE_PACKAGES]  # prepend to avoid accidental shadowing
+
+KML_NS = {"kml": "http://www.opengis.net/kml/2.2"}
 
 import geopandas as gpd
 from shapely.geometry import Point, LineString, Polygon
 from shapely.geometry.base import BaseGeometry
-
-KML_NS = {"kml": "http://www.opengis.net/kml/2.2"}
 
 # ---------- helpers ----------
 def read_kml_from_kmz(kmz_path: str) -> bytes:
@@ -172,11 +191,11 @@ def extract_data(kmz_path: str, out_path: str, operator_name: str) -> str:
 
 # ---------- zero-arg runner (edit defaults here if you want) ----------
 if __name__ == "__main__":
-    KMZ_PATH = "../data/KSE_2019.kmz"
-    OUT_PATH = "../data/tauron_centroid.geojson"
+    KMZ_PATH = "../../data/input/dolnoslaskie/KSE_2019.kmz"
+    OUT_PATH = "../../data/output/dolnoslaskie/tauron_centroid.geojson"
     OPERATOR  = "tauron"   # e.g., "tauron", "enea", "pge", etc.
-
     # saved = extract_data(KMZ_PATH, OUT_PATH, OPERATOR)
     # print("Saved GeoJSON:", saved)
     extract_data(KMZ_PATH, OUT_PATH, OPERATOR)
+    print("Saved GeoJSON:")
  

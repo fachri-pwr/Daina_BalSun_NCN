@@ -33,6 +33,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'django.contrib.gis',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -63,6 +64,7 @@ TEMPLATES = [
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
@@ -79,7 +81,7 @@ WSGI_APPLICATION = 'dashboard.wsgi.application'
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
+        "ENGINE": "django.contrib.gis.db.backends.postgis", #"django.db.backends.postgresql"
         "NAME": "daina_DB",
         "USER": "postgres",
         "PASSWORD": "290894",
@@ -135,3 +137,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 GDAL_LIBRARY_PATH = '/opt/homebrew/Cellar/gdal/3.12.0/lib/libgdal.dylib'
 # find geos path : find /opt -name "libgeos_c.dylib" -print 2>/dev/null
 GEOS_LIBRARY_PATH = '/opt/homebrew/Cellar/geos/3.14.1/lib/libgeos_c.dylib'
+
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 500000

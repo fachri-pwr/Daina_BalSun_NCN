@@ -15,7 +15,16 @@ import math
 st.set_page_config(layout="wide")
 st.title("Streamlit — visualize boxes from Django API")
 
-API_URL = st.text_input("Django API URL", value="http://127.0.0.1:8000/api/dem/")
+st.divider()
+api_link = st.selectbox('select region you want to visualize', ('poland',"opole", "dolnoslaskie"))
+if api_link == 'poland':
+    value ="http://127.0.0.1:8000/api/box/"
+else:
+    value = f"http://127.0.0.1:8000/api/box/?region_name={api_link}"
+
+
+API_URL = st.text_input("Django API URL", value=value)
+
 
 if not API_URL:
     st.stop()

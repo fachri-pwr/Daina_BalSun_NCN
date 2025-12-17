@@ -734,7 +734,7 @@ def save_geojson_and_csv(geojson_path: Path, keep_geometry: bool = False, model_
             for i, record in enumerate(df_records, start=1):
                 obj = {
                     "model": model_name,  # e.g., "app.person"
-                    "pk": i,  # assign sequential IDs
+                    #"pk": i,  # assign sequential IDs
                     "fields": record
                 }
                 result.append(obj)
@@ -915,8 +915,8 @@ if __name__ == "__main__":
     parser.add_argument("--operator", type=str, default="tauron",
                         help='Operator name when extracting DSO centroids (default: "tauron")')
 
-    parser.add_argument("--region_name", type=str,
-                        help='region name for the extracting plance')
+    parser.add_argument("--region-name", type=str,
+                        help='region name for the extracting place')
 
     # steps: allow names/numbers; user can pass multiple e.g. --steps 1 5 6  or --steps all
     parser.add_argument("--steps", nargs="+", help='Steps to run, e.g. 0 1 2 or "all" (default: all)')

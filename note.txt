@@ -1,0 +1,274 @@
+from django.db import models
+from django.contrib.gis.db import models
+
+class Landuse(models.Model):
+    # Change BigIntegerField to CharField because the DB sees it as text
+    osm_id = models.CharField(primary_key=True, max_length=100)
+    name = models.CharField(max_length=255, null=True, blank=True)
+    fclass = models.CharField(max_length=255, null=True, blank=True)
+    geometry = models.GeometryField(srid=4326,null=True, blank=True)
+    class Meta:
+        db_table = 'data_landuse'
+        managed = False
+
+class Box(models.Model):
+    osm_box_id = models.CharField(primary_key=True, max_length=100)
+    left = models.FloatField()
+    top = models.FloatField()
+    left = models.FloatField()
+    top = models.FloatField()
+    right = models.FloatField()
+    bottom = models.FloatField()
+    row_index = models.IntegerField()
+    col_index = models.IntegerField()
+    area = models.FloatField()
+    perimeter = models.FloatField()
+    geometry = models.GeometryField(srid=4326,null=True, blank=True)
+    region_name= models.CharField(max_length=100, null=True)
+    #created = models.DateTimeField(auto_now_add=True, null=True) # Add null=True
+    class Meta:
+        # Renamed to match the field name
+        #ordering = ['created']
+        # Optional: Adds a verbose name for the admin site
+        #verbose_name_plural = "Boxes"
+        db_table = 'data_box'
+        managed = False
+
+
+class Dem(models.Model):
+    osm_dem_id = models.IntegerField()
+    left = models.FloatField()
+    top = models.FloatField()
+    right = models.FloatField()
+    bottom = models.FloatField()
+    row_index = models.IntegerField()
+    col_index = models.IntegerField()
+    area = models.FloatField()
+    perimeter = models.FloatField()
+    _count = models.FloatField(null=True,blank=True)
+    _sum= models.FloatField(null=True,blank=True)
+    _mean = models.FloatField(null=True,blank=True)
+    geometry = models.JSONField(blank=True, null=True)
+    region_name = models.CharField(max_length=100, null=True)
+
+class Dni(models.Model):
+    osm_dni_id = models.IntegerField()
+    left = models.FloatField()
+    top = models.FloatField()
+    right = models.FloatField()
+    bottom = models.FloatField()
+    row_index = models.IntegerField()
+    col_index = models.IntegerField()
+    area = models.FloatField()
+    perimeter = models.FloatField()
+    _count = models.FloatField(null=True,blank=True)
+    _sum= models.FloatField(null=True,blank=True)
+    _mean = models.FloatField(null=True,blank=True)
+    geometry = models.JSONField(blank=True, null=True)
+    region_name = models.CharField(max_length=100, null=True)
+
+class Pvout(models.Model):
+    osm_pvout_id = models.IntegerField()
+    left = models.FloatField()
+    top = models.FloatField()
+    right = models.FloatField()
+    bottom = models.FloatField()
+    row_index = models.IntegerField()
+    col_index = models.IntegerField()
+    area = models.FloatField()
+    perimeter = models.FloatField()
+    _count = models.FloatField(null=True,blank=True)
+    _sum= models.FloatField(null=True,blank=True)
+    _mean = models.FloatField(null=True,blank=True)
+    geometry = models.JSONField(blank=True, null=True)
+    region_name = models.CharField(max_length=100, null=True)
+
+class Temp(models.Model):
+    osm_temp_id = models.IntegerField()
+    left = models.FloatField()
+    top = models.FloatField()
+    right = models.FloatField()
+    bottom = models.FloatField()
+    row_index = models.IntegerField()
+    col_index = models.IntegerField()
+    area = models.FloatField()
+    perimeter = models.FloatField()
+    _count = models.FloatField(null=True,blank=True)
+    _sum= models.FloatField(null=True,blank=True)
+    _mean = models.FloatField(null=True,blank=True)
+    geometry = models.JSONField(blank=True, null=True)
+    region_name = models.CharField(max_length=100, null=True)
+
+class CentroidBox(models.Model):
+    osm_centroid_box_id = models.IntegerField()
+    left = models.FloatField()
+    top = models.FloatField()
+    right = models.FloatField()
+    bottom = models.FloatField()
+    row_index = models.IntegerField()
+    col_index = models.IntegerField()
+    area = models.FloatField()
+    perimeter = models.FloatField()
+    x = models.FloatField()
+    y = models.FloatField()
+    geometry = models.JSONField(blank=True, null=True)
+    region_name= models.CharField(max_length=100, null=True)
+
+class CentroidBox2Dso(models.Model):
+    osm_box2dso_id = models.IntegerField()
+    left = models.FloatField()
+    top = models.FloatField()
+    right = models.FloatField()
+    bottom = models.FloatField()
+    row_index = models.IntegerField()
+    col_index = models.IntegerField()
+    area = models.FloatField()
+    perimeter = models.FloatField()
+    x = models.FloatField()
+    y = models.FloatField()
+    nearest_dso_id = models.IntegerField()
+    nearest_dso_x = models.FloatField()
+    nearest_dso_y = models.FloatField()
+    distance_km = models.FloatField()
+    score = models.FloatField()
+    geometry = models.JSONField(blank=True, null=True)
+    region_name= models.CharField(max_length=100, null=True)
+
+class CentroidBox2Plant(models.Model):
+    osm_box2plant_id = models.IntegerField()
+    left = models.FloatField()
+    top = models.FloatField()
+    right = models.FloatField()
+    bottom = models.FloatField()
+    row_index = models.IntegerField()
+    col_index = models.IntegerField()
+    area = models.FloatField()
+    perimeter = models.FloatField()
+    x = models.FloatField()
+    y = models.FloatField()
+    nearest_plant_id = models.IntegerField()
+    nearest_plant_x = models.FloatField()
+    nearest_plant_y = models.FloatField()
+    distance_km = models.FloatField()
+    score = models.FloatField()
+    geometry = models.JSONField(blank=True, null=True)
+    region_name = models.CharField(max_length=100, null=True)
+
+class CentroidBox2Railway(models.Model):
+    osm_box2railway_id = models.IntegerField()
+    left = models.FloatField()
+    top = models.FloatField()
+    right = models.FloatField()
+    bottom = models.FloatField()
+    row_index = models.IntegerField()
+    col_index = models.IntegerField()
+    area = models.FloatField()
+    perimeter = models.FloatField()
+    x = models.FloatField()
+    y = models.FloatField()
+    nearest_railway_id = models.IntegerField()
+    nearest_railway_x = models.FloatField()
+    nearest_railway_y = models.FloatField()
+    distance_km = models.FloatField()
+    score = models.FloatField()
+    geometry = models.JSONField(blank=True, null=True)
+    region_name = models.CharField(max_length=100, null=True)
+
+class CentroidBox2Road(models.Model):
+    osm_box2road_id = models.IntegerField()
+    left = models.FloatField()
+    top = models.FloatField()
+    right = models.FloatField()
+    bottom = models.FloatField()
+    row_index = models.IntegerField()
+    col_index = models.IntegerField()
+    area = models.FloatField()
+    perimeter = models.FloatField()
+    x = models.FloatField()
+    y = models.FloatField()
+    nearest_road_id = models.IntegerField()
+    nearest_road_x = models.FloatField()
+    nearest_road_y = models.FloatField()
+    distance_km = models.FloatField()
+    score = models.FloatField()
+    geometry = models.JSONField(blank=True, null=True)
+    region_name = models.CharField(max_length=100, null=True)
+
+class LandRatio(models.Model):
+    osm_land_id = models.IntegerField()
+    left = models.FloatField()
+    top = models.FloatField()
+    right = models.FloatField()
+    bottom = models.FloatField()
+    row_index = models.IntegerField()
+    col_index = models.IntegerField()
+    area = models.FloatField()
+    perimeter = models.FloatField()
+    fid = models.IntegerField()
+    osm_id = models.IntegerField()
+    code = models.IntegerField()
+    fclass = models.CharField(max_length=100)
+    name = models.CharField(max_length=100, blank=True, null=True)
+    geometry = models.JSONField(blank=True, null=True)
+    area_2 = models.FloatField()
+    perimeter_2 = models.FloatField()
+    ratio = models.FloatField()
+    region_name = models.CharField(max_length=100, null=True)
+
+class FinalScore(models.Model):
+    osm_final_score_id = models.IntegerField()
+    left = models.FloatField()
+    top = models.FloatField()
+    right = models.FloatField()
+    bottom = models.FloatField()
+    row_index = models.IntegerField()
+    col_index = models.IntegerField()
+    area = models.FloatField()
+    perimeter = models.FloatField()
+    geometry = models.JSONField(blank=True, null=True)
+    land_score = models.FloatField()
+    dso_score = models.FloatField()
+    dso_score_distance_km = models.FloatField(null=True, blank=True)
+    pv_score = models.FloatField()
+    pv_score_distance_km = models.FloatField(null=True, blank=True)
+    railway_score = models.FloatField(null=True, blank=True)
+    railway_score_distance_km = models.FloatField(null=True, blank=True)
+    road_score = models.FloatField()
+    road_score_distance_km = models.FloatField(null=True, blank=True)
+    dem_score = models.FloatField()
+    dni_score = models.FloatField()
+    temp_score = models.FloatField()
+    pvout_score = models.FloatField()
+    region_name = models.CharField(max_length=100, null=True)
+
+
+from django.contrib import admin
+from django.contrib.gis import admin as gis_admin
+from .models import *
+
+
+admin.site.register(Dem)
+admin.site.register(Dni)
+admin.site.register(Temp)
+admin.site.register(Pvout)
+admin.site.register(CentroidBox)
+admin.site.register(CentroidBox2Dso)
+admin.site.register(CentroidBox2Plant)
+admin.site.register(LandRatio)
+admin.site.register(FinalScore)
+
+class LanduseAdmin(gis_admin.GISModelAdmin):
+    # This enables an OpenStreetMap background in the admin
+    list_display = ('name', 'fclass')
+    search_fields = ('fclass',)
+    # Optional: Set the default map settings
+    default_zoom = 12
+admin.site.register(Landuse,LanduseAdmin)
+
+class BoxAdmin(gis_admin.GISModelAdmin):
+    # This makes 'created' appear in the admin change form
+    #readonly_fields = ('created',)
+    # This makes 'created' appear in the list view (the table)
+    list_display = ('osm_box_id', 'region_name')
+    default_zoom = 12
+admin.site.register(Box, BoxAdmin)

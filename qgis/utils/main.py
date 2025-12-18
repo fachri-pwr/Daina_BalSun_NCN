@@ -3,6 +3,8 @@ import sys
 import pandas as pd
 import argparse
 
+# from backend.notebook.src.runner import df_box
+
 # Point Shapely to GEOS inside the QGIS app bundle (you found this path)
 os.environ["SHAPELY_LIBRARY_PATH"] = "/Applications/QGIS-LTR.app/Contents/MacOS/lib/libgeos_c.dylib"
 
@@ -644,113 +646,247 @@ def gdf_to_qgs_geojson(gdf, name="layer"):
     gdf.to_file(tmp.name, driver="GeoJSON")
     return QgsVectorLayer(tmp.name, name, "ogr")
 
-
-# def save_geojson_and_csv(geojson_path: Path, keep_geometry: bool = False):
-#     """Read a GeoJSON file and save it as CSV.
-#
-#     Args:
-#         geojson_path: Path to the GeoJSON file
-#         keep_geometry: If True, keeps geometry as JSON string in CSV. If False, drops geometry.
-#     """
+# def save_geojson_and_csv(geojson_path: Path, keep_geometry: bool = False, model_name: str = None,
+#                          region_name: str = None, id_name: str = None, df_return =False):
 #     try:
-#         import json
-#
-#         # Read GeoJSON as plain JSON
-#         with open(geojson_path, 'r') as f:
+#         # 1. Read GeoJSON
+#         with open(geojson_path, 'r', encoding='utf-8') as f:
 #             geojson_data = json.load(f)
 #
-#         # Extract properties from features
 #         records = []
-#         for feature in geojson_data.get('features', []):
-#             props = feature.get('properties', {})
+#         features = geojson_data.get('features', [])
 #
-#             if props:
-#                 # Add geometry if requested
-#                 if keep_geometry:
-#                     geometry = feature.get('geometry', {})
-#                     if geometry:
-#                         props['geometry'] = json.dumps(geometry)
+#         # 2. Extract properties for CSV/JSON Fixture
+#         for feature in features:
+#             props = feature.get('properties', {}).copy()  # Copy to avoid mutating original data
 #
-#                 records.append(props)
+#             if keep_geometry:
+#                 geometry = feature.get('geometry', {})
+#                 if geometry:
+#                     props['geometry'] = json.dumps(geometry)
 #
-#         # Create DataFrame and save
-#         if records:
-#             df = pd.DataFrame(records)
-#             csv_path = geojson_path.with_suffix('.csv')
-#             df.to_csv(csv_path, index=False)
-#             print(f"  → Saved CSV: {csv_path}")
-#         else:
+#             records.append(props)
+#
+#         if not records:
 #             print(f"  ⚠ Warning: No records found in {geojson_path}")
+#             return
+#
+#         # 3. Process Data via DataFrame
+#         df = pd.DataFrame(records)
+#         if region_name:
+#             df['region_name'] = region_name
+#         if id_name and 'id' in df.columns:
+#             df.rename(columns={'id': id_name}, inplace=True)
+#
+#         # --- SAVE CSV ---
+#         csv_path = geojson_path.with_suffix('.csv')
+#         df.to_csv(csv_path, index=False)
+#         print(f"  → Saved CSV: {csv_path}")
+#
+#         # --- SAVE DJANGO FIXTURE (JSON) ---
+#         if model_name:
+#             # We use a specific suffix to avoid overwriting original json files
+#             fixture_path = geojson_path.with_name(f"{geojson_path.stem}_fixture.json")
+#             df_records = df.to_dict(orient='records')
+#             fixture_result = [
+#                 {"model": model_name, "fields": record}
+#                 for record in df_records
+#             ]
+#             with open(fixture_path, 'w', encoding='utf-8') as f:
+#                 json.dump(fixture_result, f, indent=2)
+#             print(f"  → Saved JSON Fixture: {fixture_path}")
+#
+#         # --- SAVE UPDATED GEOJSON ---
+#         # If you want to save the GeoJSON with the NEW property names (like id_name)
+#         # we must update the features in the geojson_data object.
+#         for i, feature in enumerate(features):
+#             if i < len(df):
+#                 feature['properties'] = df.iloc[i].to_dict()
+#                 # Remove geometry from properties if it was added there for the CSV
+#                 if 'geometry' in feature['properties']:
+#                     del feature['properties']['geometry']
+#
+#         output_geojson_path = geojson_path.with_name(f"{geojson_path.stem}_updated.geojson")
+#         with open(output_geojson_path, 'w', encoding='utf-8') as f:
+#             json.dump(geojson_data, f, indent=2)
+#         print(f"  → Saved Modified GeoJSON: {output_geojson_path}")
 #
 #     except Exception as e:
-#         print(f"  ⚠ Warning: Could not save CSV for {geojson_path}: {e}")
+#         print(f"  ⚠ Error: Could not process {geojson_path}: {e}")
+#
+#     if df_return:
+#         return df
 
-
-
-
-
-def save_geojson_and_csv(geojson_path: Path, keep_geometry: bool = False, model_name: str = None, region_name: str = None, id_name: str = None):
-    """Read a GeoJSON file and save it as CSV.
-
-    Args:
-        geojson_path: Path to the GeoJSON file
-        keep_geometry: If True, keeps geometry as JSON string in CSV. If False, drops geometry.
-    """
+def save_geojson_and_csv(geojson_path: Path, keep_geometry: bool = False, model_name: str = None,
+                         region_name: str = None, id_name: str = None, id_prefix: str = "", df_return=False):
     try:
-
-
-        # Read GeoJSON as plain JSON
-        with open(geojson_path, 'r') as f:
+        # 1. Read GeoJSON
+        with open(geojson_path, 'r', encoding='utf-8') as f:
             geojson_data = json.load(f)
 
-        # Extract properties from features
         records = []
-        for feature in geojson_data.get('features', []):
-            props = feature.get('properties', {})
+        features = geojson_data.get('features', [])
 
-            if props:
-                # Add geometry if requested
-                if keep_geometry:
-                    geometry = feature.get('geometry', {})
-                    if geometry:
-                        props['geometry'] = json.dumps(geometry)
+        # 2. Extract properties
+        for feature in features:
+            props = feature.get('properties', {}).copy()
 
-                records.append(props)
+            if keep_geometry:
+                geometry = feature.get('geometry', {})
+                if geometry:
+                    props['geometry'] = json.dumps(geometry)
+            records.append(props)
 
-        # Create DataFrame and save
-        if records:
-            df = pd.DataFrame(records)
-            df['region_name'] = region_name
-            df.rename(columns={'id': id_name}, inplace=True)
-            csv_path = geojson_path.with_suffix('.csv')
-            df.to_csv(csv_path, index=False)
-            print(f"  → Saved CSV: {csv_path}")
-        if model_name != None:
-            json_path = geojson_path.with_suffix('.json')
-            # Convert DataFrame to list of dicts (records)
-            df_records = df.to_dict(orient='records')
-            # Create fixture
-            result = []
-            for i, record in enumerate(df_records, start=1):
-                obj = {
-                    "model": model_name,  # e.g., "app.person"
-                    #"pk": i,  # assign sequential IDs
-                    "fields": record
-                }
-                result.append(obj)
-            # Save to JSON
-            with open(json_path, 'w', encoding='utf-8') as f:
-                json.dump(result, f, indent=2)
-
-            print(f"  → Saved JSON: {json_path}")
-        else:
+        if not records:
             print(f"  ⚠ Warning: No records found in {geojson_path}")
+            return
+
+        # 3. Process Data via DataFrame
+        df = pd.DataFrame(records)
+
+        # --- APPLY PREFIX AND RENAME ID ---
+        # If 'id' exists, rename it first to the target id_name (e.g., 'osm_box_id')
+        if id_name and 'id' in df.columns:
+            df.rename(columns={'id': id_name}, inplace=True)
+
+        # Apply the prefix to the ID column if provided
+        target_id_col = id_name if id_name in df.columns else 'id'
+        if id_prefix and target_id_col in df.columns:
+            df[target_id_col] = df[target_id_col].apply(
+                lambda x: f"{id_prefix}{x}" if x is not None and str(x).lower() != 'nan' else x
+            )
+
+        if region_name:
+            df['region_name'] = region_name
+
+        # --- SAVE CSV ---
+        csv_path = geojson_path.with_suffix('.csv')
+        df.to_csv(csv_path, index=False)
+        print(f"  → Saved CSV: {csv_path}")
+
+        # --- SAVE DJANGO FIXTURE (JSON) ---
+        if model_name:
+            fixture_path = geojson_path.with_name(f"{geojson_path.stem}_fixture.json")
+            df_records = df.to_dict(orient='records')
+
+            fixture_result = []
+            for record in df_records:
+                # Use the updated ID (with prefix) as the primary key for Django
+                pk_val = record.get(target_id_col)
+                fixture_result.append({
+                    "model": model_name,
+                    "pk": pk_val,
+                    "fields": record
+                })
+
+            with open(fixture_path, 'w', encoding='utf-8') as f:
+                json.dump(fixture_result, f, indent=2)
+            print(f"  → Saved JSON Fixture: {fixture_path}")
+
+        # --- SAVE UPDATED GEOJSON ---
+        for i, feature in enumerate(features):
+            if i < len(df):
+                # This dict now contains the prefixed ID and renamed columns
+                feature['properties'] = df.iloc[i].to_dict()
+                if 'geometry' in feature['properties']:
+                    del feature['properties']['geometry']
+
+        output_geojson_path = geojson_path.with_name(f"{geojson_path.stem}_updated.geojson")
+        with open(output_geojson_path, 'w', encoding='utf-8') as f:
+            json.dump(geojson_data, f, indent=2)
+        print(f"  → Saved Modified GeoJSON: {output_geojson_path}")
 
     except Exception as e:
-        print(f"  ⚠ Warning: Could not save CSV for {geojson_path}: {e}")
+        print(f"  ⚠ Error: Could not process {geojson_path}: {e}")
+
+    if df_return:
+        return df
+
+def save_final_score(df_final, output_path: Path, model_name: str, region_name: str):
+    """
+    Saves the merged df_final into:
+    1. .geojson (Spatial data)
+    2. .csv (Flat table)
+    3. _fixture.json (Django-ready format)
+    """
+    try:
+        # --- 1. Preparation ---
+        # Ensure it's a GeoDataFrame and fill missing values
+        if not isinstance(df_final, gpd.GeoDataFrame):
+            df_final = gpd.GeoDataFrame(df_final, geometry='geometry')
+
+        df_final = df_final.fillna(0)
+        df_final['region_name'] = region_name
+
+        # --- 2. Save GeoJSON ---
+        geojson_out = output_path.with_suffix('.geojson')
+        df_final.to_file(geojson_out, driver='GeoJSON')
+        print(f"  → Saved GeoJSON: {geojson_out}")
+
+        # --- 3. Prepare for Text-based Formats (CSV/JSON) ---
+        # We must convert the geometry object to a string (WKT)
+        # so it doesn't crash the JSON serializer.
+        df_text = df_final.copy()
+        if 'geometry' in df_text.columns:
+            df_text['geometry'] = df_text['geometry'].apply(lambda x: x.wkt if x else None)
+
+        # --- 4. Save CSV ---
+        csv_out = output_path.with_suffix('.csv')
+        df_text.to_csv(csv_out, index=False)
+        print(f"  → Saved CSV: {csv_out}")
+
+        # --- 5. Save Django JSON Fixture ---
+        fixture_out = output_path.with_name(f"{output_path.stem}_fixture.json")
+        records = df_text.to_dict(orient='records')
+
+        fixture_data = []
+        for record in records:
+            # Try to find the primary key dynamically
+            pk_val = record.get('osm_final_score_id') or record.get('osm_box_id')
+
+            fixture_data.append({
+                "model": model_name,
+                "pk": pk_val,
+                "fields": record
+            })
+
+        with open(fixture_out, 'w', encoding='utf-8') as f:
+            json.dump(fixture_data, f, indent=2)
+        print(f"  → Saved JSON Fixture: {fixture_out}")
+
+    except Exception as e:
+        print(f"  ⚠ Error saving results: {e}")
 
 
+def runner_FinalScore(*args):
+    # args[0] is df_box (the base with geometry)
+    df_final = args[0].copy()
 
+    # Mapping of (DataFrame, Source_ID, Source_Value, Target_Name)
+    categories = [
+        (args[1], 'osm_land_id', 'ratio', 'land_score'),
+        (args[2], 'osm_box2dso_id', 'score', 'dso_score'),
+        (args[3], 'osm_box2plant_id', 'score', 'plant_score'),
+        (args[4], 'osm_box2railway_id', 'score', 'railway_score'),
+        (args[5], 'osm_box2road_id', 'score', 'road_score'),
+        (args[6], 'osm_dni_id', '_mean', 'dni_score'),
+        (args[7], 'osm_dem_id', '_mean', 'dem_score'),
+        (args[8], 'osm_temp_id', '_mean', 'pvout_score'),
+        (args[9], 'osm_dem_id', '_mean', 'temp_score')
+    ]
+
+    for df_cat, id_col, val_col, new_name in categories:
+        temp_df = df_cat[[id_col, val_col]].rename(columns={
+            id_col: 'osm_box_id',
+            val_col: new_name
+        })
+        df_final = pd.merge(df_final, temp_df, on='osm_box_id', how='left')
+
+    # Ensure it is a GeoDataFrame (important for saving GeoJSON)
+    if not isinstance(df_final, gpd.GeoDataFrame):
+        df_final = gpd.GeoDataFrame(df_final, geometry='geometry')
+
+    return df_final
 
 def run_pipeline(args):
     input_path = Path(args.input_path)
@@ -772,6 +908,7 @@ def run_pipeline(args):
     v_space = args.v_space
     operator_name = args.operator
     region_name = args.region_name
+    id_prefix = args.id_prefix
 
     ### Extract path
     box_path = output_path / "box.geojson"
@@ -794,7 +931,7 @@ def run_pipeline(args):
     if args.steps:
         for s in args.steps:
             if s == "all":
-                steps_to_run = set(map(str, range(0, 12)))
+                steps_to_run = set(map(str, range(0, 13)))
                 break
             steps_to_run.add(str(s))
     else:
@@ -821,7 +958,8 @@ def run_pipeline(args):
         box_path.parent.mkdir(parents=True, exist_ok=True)
         print(f"Step 1: Creating box grid → {box_path}")
         runner_PvCreateGrid(str(boundary_path), str(box_path), h_space, v_space)
-        save_geojson_and_csv(box_path, keep_geometry=True, model_name='data.Box', region_name=region_name, id_name='osm_box_id')
+        df_box = save_geojson_and_csv(box_path, keep_geometry=True, model_name='data.Box', region_name=region_name, id_name='osm_box_id',id_prefix=id_prefix ,df_return=True)
+        #print(df_box.head(3))
 
     # 2) Create centroid box
     if should_run(centroid_box_path, "2"):
@@ -835,68 +973,72 @@ def run_pipeline(args):
         centroid_score_box2dso.parent.mkdir(parents=True, exist_ok=True)
         print(f"Step 3: Creating score centroid box-dso → {centroid_score_box2dso}")
         runner_PV_Box2Dso(str(centroid_box_path), str(centroid_dso_path), str(centroid_score_box2dso))
-        save_geojson_and_csv(centroid_score_box2dso,keep_geometry=True, model_name='data.CentroidBox2Dso', region_name=region_name, id_name='osm_box2dso_id')
+        df_dso= save_geojson_and_csv(centroid_score_box2dso,keep_geometry=True, model_name='data.CentroidBox2Dso', region_name=region_name, id_name='osm_box2dso_id',df_return=True)
 
     # 4) calculate distance centroid box-plant
     if should_run(centroid_score_box2plant, "4"):
         centroid_score_box2plant.parent.mkdir(parents=True, exist_ok=True)
         print(f"Step 4: Creating score centroid box-plant → {centroid_score_box2plant}")
         runner_PV_Box2Plant(str(centroid_box_path), str(centroid_plant_path),'solar',str(centroid_score_box2plant))
-        save_geojson_and_csv(centroid_score_box2plant,keep_geometry=True, model_name='data.CentroidBox2Plant', region_name=region_name, id_name='osm_box2plant_id')
+        df_plant=save_geojson_and_csv(centroid_score_box2plant,keep_geometry=True, model_name='data.CentroidBox2Plant', region_name=region_name, id_name='osm_box2plant_id',df_return=True)
 
     # 5) calculate distance centroid box-railway
     if should_run(centroid_score_box2railway, "5"):
         centroid_score_box2railway.parent.mkdir(parents=True, exist_ok=True)
         print(f"Step 5: Creating score centroid box-railway → {centroid_score_box2railway}")
         runner_PV_Box2Railway(str(centroid_box_path), str(centroid_railway_path),str(centroid_score_box2railway))
-        save_geojson_and_csv(centroid_score_box2railway,keep_geometry=True, model_name='data.CentroidBox2Railway', region_name=region_name, id_name='osm_box2railway_id')
+        df_railway = save_geojson_and_csv(centroid_score_box2railway,keep_geometry=True, model_name='data.CentroidBox2Railway', region_name=region_name, id_name='osm_box2railway_id',df_return=True)
 
     # 6) calculate distance centroid box-road vertices
     if should_run(centroid_score_box2road, "6"):
         centroid_score_box2road.parent.mkdir(parents=True, exist_ok=True)
         print(f"Step 6: Creating score centroid box-road → {centroid_score_box2road}")
         runner_PV_Box2Road(str(centroid_box_path), str(centroid_road_path), str(centroid_score_box2road))
-        save_geojson_and_csv(centroid_score_box2road,keep_geometry=True, model_name='data.CentroidBox2Road', region_name=region_name, id_name='osm_box2road_id')
+        df_road = save_geojson_and_csv(centroid_score_box2road,keep_geometry=True, model_name='data.CentroidBox2Road', region_name=region_name, id_name='osm_box2road_id',df_return=True)
 
     # 7) Extracting DNI
     if should_run(dni_zonal_path, "7"):
         dni_zonal_path.parent.mkdir(parents=True, exist_ok=True)
         print(f"Step 7: Extracting DNI → {dni_zonal_path}")
         runner_PvZonalStatistic(str(box_path), str(dni_raster_path), str(dni_zonal_path))
-        save_geojson_and_csv(dni_zonal_path,keep_geometry=True, model_name='data.Dni', region_name=region_name, id_name='osm_dni_id')
+        df_dni = save_geojson_and_csv(dni_zonal_path,keep_geometry=True, model_name='data.Dni', region_name=region_name, id_name='osm_dni_id',df_return=True)
 
     # 8) Extracting PVOUT
     if should_run(pvout_zonal_path, "8"):
         pvout_zonal_path.parent.mkdir(parents=True, exist_ok=True)
         print(f"Step 8: Extracting PVOUT → {pvout_zonal_path}")
         runner_PvZonalStatistic(str(box_path), str(pvout_raster_path), str(pvout_zonal_path))
-        save_geojson_and_csv(pvout_zonal_path,keep_geometry=True, model_name='data.Pvout', region_name=region_name, id_name='osm_pvout_id')
+        df_pvout = save_geojson_and_csv(pvout_zonal_path,keep_geometry=True, model_name='data.Pvout', region_name=region_name, id_name='osm_pvout_id',df_return=True)
 
     # 9) Extracting Temperature
     if should_run(temp_zonal_path, "9"):
         temp_zonal_path.parent.mkdir(parents=True, exist_ok=True)
         print(f"Step 9: Extracting TEMP → {temp_zonal_path}")
         runner_PvZonalStatistic(str(box_path), str(temp_raster_path), str(temp_zonal_path))
-        save_geojson_and_csv(temp_zonal_path,keep_geometry=True, model_name='data.Temp', region_name=region_name, id_name='osm_temp_id')
+        df_temp =save_geojson_and_csv(temp_zonal_path,keep_geometry=True, model_name='data.Temp', region_name=region_name, id_name='osm_temp_id',df_return=True)
 
     # 10) Extracting DEM
     if should_run(dem_zonal_path, "10"):
         dem_zonal_path.parent.mkdir(parents=True, exist_ok=True)
         print(f"Step 10: Extracting DEM → {dem_zonal_path}")
         runner_PvZonalStatistic(str(box_path), str(dem_raster_path), str(dem_zonal_path))
-        save_geojson_and_csv(dem_zonal_path,keep_geometry=True, model_name='data.Dem', region_name=region_name, id_name='osm_dem_id')
+        df_dem = save_geojson_and_csv(dem_zonal_path,keep_geometry=True, model_name='data.Dem', region_name=region_name, id_name='osm_dem_id',df_return=True)
 
     # 11) Calculate land ratio (kept as separate logical step)
     if should_run(land_ratio_path, "11"):
         land_ratio_path.parent.mkdir(parents=True, exist_ok=True)
         print(f"Step 11: Extracting Land ratio → {land_ratio_path}")
         runner_PvLandUseRatio(str(box_path), str(land_use_path), str(land_ratio_path))
-        save_geojson_and_csv(land_ratio_path,keep_geometry=True, model_name='data.LandRatio', region_name=region_name, id_name='osm_land_id')
+        df_land_ratio = save_geojson_and_csv(land_ratio_path,keep_geometry=True, model_name='data.LandRatio', region_name=region_name, id_name='osm_land_id',df_return=True)
     print("Done. The algorithm has finished.")
+
     #
-    # # 12) get the final score
-    # if should_run(final_mcdm_score_path, "12"):
-    #     final_mcdm_score_path.parent.mkdir(parents=True, exist_ok=True)
+    # 12) get the final score
+    if should_run(final_mcdm_score_path, "12"):
+        final_mcdm_score_path.parent.mkdir(parents=True, exist_ok=True)
+        final_df = runner_FinalScore(df_box, df_land_ratio,df_dso, df_plant,df_railway, df_road, df_dni, df_dem, df_pvout, df_temp)
+        save_final_score(final_df, output_path,"data.FinalScore",region_name)
+
 
 
 
@@ -920,6 +1062,8 @@ if __name__ == "__main__":
 
     # steps: allow names/numbers; user can pass multiple e.g. --steps 1 5 6  or --steps all
     parser.add_argument("--steps", nargs="+", help='Steps to run, e.g. 0 1 2 or "all" (default: all)')
+
+    parser.add_argument("--id-prefix", type=str, help='Steps to run, e.g. 0 1 2 or "all" (default: all)')
 
     parser.add_argument("--force", action="store_true",
                         help="Force running steps even if output files already exist (overwrites)")

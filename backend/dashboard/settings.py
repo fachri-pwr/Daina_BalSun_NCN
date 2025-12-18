@@ -82,7 +82,7 @@ WSGI_APPLICATION = 'dashboard.wsgi.application'
 DATABASES = {
     "default": {
         "ENGINE": "django.contrib.gis.db.backends.postgis", #"django.db.backends.postgresql"
-        "NAME": "daina_DB",
+        "NAME": "dainagis_DB",
         "USER": "postgres",
         "PASSWORD": "290894",
         "HOST": "localhost",

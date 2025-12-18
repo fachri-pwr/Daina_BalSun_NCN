@@ -1,8 +1,6 @@
 data/
 backend/.venv_backend
 backend/db.sqlite3
-backend/notebook/.idea
-backend/notebook/data
 qgis/.idea
 qgis/.venv_qgis
 

@@ -296,6 +296,12 @@ def runner_PV_Box2Plant(centroid_box_path, centroid_plant_path,source_name,outpu
     plant_gdf = power_plant_filter(centroid_plant_path, source_name)
     plant_score =  box2plant(box_gdf , plant_gdf)
     convert_geojson(plant_score, output_path)
+    
+# def runner_PV_Box2DsoMocy(centroid_box_path, centroid_dso_path, output_path):
+#     box_gdf = read_geojson(centroid_box_path)
+#     dso_gdf = read_geojson(centroid_dso_path)
+#     dso_score = box2dso(box_gdf , dso_gdf)
+#     convert_geojson(dso_score, output_path)
 
 
 # if __name__ == "__main__" :

@@ -1,0 +1,62 @@
+=============== getting railway station =============
+
+[out:json][timeout:25];
+// Bounding box for Dolnośląskie region
+(
+  node["railway"="station"](50.5,14.5,51.8,17.8);
+  way["railway"="station"](50.5,14.5,51.8,17.8);
+  relation["railway"="station"](50.5,14.5,51.8,17.8);
+  node["railway"="halt"](50.5,14.5,51.8,17.8);
+  way["railway"="halt"](50.5,14.5,51.8,17.8);
+  relation["railway"="halt"](50.5,14.5,51.8,17.8);
+);
+out body;
+>;
+out skel qt;
+
+
+=====================
+
+/*
+This query fetches all road connections in Dolnośląskie (Lower Silesia), Poland.
+You can use it at: https://overpass-turbo.eu/
+WARNING: This will return a large amount of data and may take time to process.
+*/
+
+[out:json][timeout:90];
+// Bounding box for Dolnośląskie region (south, west, north, east)
+(
+  // Motorways (autostrady)
+  way["highway"="motorway"](50.5,14.5,51.8,17.8);
+  way["highway"="motorway_link"](50.5,14.5,51.8,17.8);
+
+  // Trunk roads (drogi ekspresowe)
+  way["highway"="trunk"](50.5,14.5,51.8,17.8);
+  way["highway"="trunk_link"](50.5,14.5,51.8,17.8);
+
+  // Primary roads (drogi krajowe)
+  way["highway"="primary"](50.5,14.5,51.8,17.8);
+  way["highway"="primary_link"](50.5,14.5,51.8,17.8);
+
+  // Secondary roads (drogi wojewódzkie)
+  way["highway"="secondary"](50.5,14.5,51.8,17.8);
+  way["highway"="secondary_link"](50.5,14.5,51.8,17.8);
+
+  // Tertiary roads (drogi powiatowe)
+  way["highway"="tertiary"](50.5,14.5,51.8,17.8);
+  way["highway"="tertiary_link"](50.5,14.5,51.8,17.8);
+
+  // Unclassified roads (drogi gminne)
+  way["highway"="unclassified"](50.5,14.5,51.8,17.8);
+
+  // Residential roads
+  way["highway"="residential"](50.5,14.5,51.8,17.8);
+
+  // Service roads
+  way["highway"="service"](50.5,14.5,51.8,17.8);
+);
+
+// Output the results
+out body;
+>;
+out skel qt;

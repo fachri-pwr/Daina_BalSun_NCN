@@ -11,7 +11,7 @@ st.set_page_config(layout="wide")
 st.title("Streamlit — Full Dataset Visualizer")
 
 # --- 1. Selection Logic ---
-api_choice = st.selectbox('Select Data Mode', ('box', 'bazamocy'))
+api_choice = st.selectbox('Select Data Mode', ('box', 'tauron'))
 
 if api_choice == 'box':
     urls_to_fetch = ["http://127.0.0.1:8000/api/box/"]
@@ -123,4 +123,4 @@ if st.button("Load All Data from API"):
         st.download_button("Download Full CSV", data=csv, file_name=f"{api_choice}_data.csv", mime='text/csv')
 
     else:
-        st.warning("No data found.")cd
+        st.warning("No data found.")

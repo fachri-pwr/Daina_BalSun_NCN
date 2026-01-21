@@ -1,6 +1,7 @@
 import os
 import sys
 import pandas as pd
+import geopandas as gpd
 import argparse
 
 # from backend.notebook.src.runner import df_box
@@ -69,6 +70,7 @@ import json
 Processing.initialize()
 print("Processing framework OK")
 import geopandas as gpd
+from shapely.geometry import shape
 
 
 ### ================================== PV CREATE GRID ================================= ###
@@ -743,6 +745,7 @@ def save_geojson_and_csv(geojson_path: Path, keep_geometry: bool = False, model_
 
         # 3. Process Data via DataFrame
         df = pd.DataFrame(records)
+        
 
         # --- APPLY PREFIX AND RENAME ID ---
         # If 'id' exists, rename it first to the target id_name (e.g., 'osm_box_id')
@@ -800,8 +803,9 @@ def save_geojson_and_csv(geojson_path: Path, keep_geometry: bool = False, model_
         print(f"  ⚠ Error: Could not process {geojson_path}: {e}")
 
     if df_return:
-        return df
-
+        return  df
+    
+    
 def save_final_score(df_final, output_path: Path, model_name: str, region_name: str):
     """
     Saves the merged df_final into:
@@ -857,10 +861,13 @@ def save_final_score(df_final, output_path: Path, model_name: str, region_name: 
     except Exception as e:
         print(f"  ⚠ Error saving results: {e}")
 
-
 def runner_FinalScore(*args):
     # args[0] is df_box (the base with geometry)
     df_final = args[0].copy()
+    geometry = df_final['geometry']
+    df_final = df_final[['osm_box_id','area','perimeter']]
+    
+  
 
     # Mapping of (DataFrame, Source_ID, Source_Value, Target_Name)
     categories = [
@@ -871,8 +878,10 @@ def runner_FinalScore(*args):
         (args[5], 'osm_box2road_id', 'score', 'road_score'),
         (args[6], 'osm_dni_id', '_mean', 'dni_score'),
         (args[7], 'osm_dem_id', '_mean', 'dem_score'),
-        (args[8], 'osm_temp_id', '_mean', 'pvout_score'),
-        (args[9], 'osm_dem_id', '_mean', 'temp_score')
+        (args[8], 'osm_pvout_id', '_mean', 'pvout_score'),
+        (args[9], 'osm_temp_id', '_mean', 'temp_score'),
+        (args[2], 'osm_box2dso_id', 'score', 'dsomocy_score')
+        
     ]
 
     for df_cat, id_col, val_col, new_name in categories:
@@ -881,12 +890,18 @@ def runner_FinalScore(*args):
             val_col: new_name
         })
         df_final = pd.merge(df_final, temp_df, on='osm_box_id', how='left')
+    
 
-    # Ensure it is a GeoDataFrame (important for saving GeoJSON)
-    if not isinstance(df_final, gpd.GeoDataFrame):
-        df_final = gpd.GeoDataFrame(df_final, geometry='geometry')
+    # # Ensure it is a GeoDataFrame (important for saving GeoJSON)
+    # if not isinstance(df_final, gpd.GeoDataFrame):
+    #     df_final = gpd.GeoDataFrame(df_final, geometry='geometry', crs="EPSG:4326")
+    df_final['geometry'] = geometry
 
     return df_final
+
+
+##### run pipeline 
+
 
 def run_pipeline(args):
     input_path = Path(args.input_path)
@@ -903,6 +918,7 @@ def run_pipeline(args):
     centroid_plant_path = input_path / "power_plant_dolnoslaskie.geojson"
     centroid_railway_path = input_path / "railway_station.geojson"
     centroid_road_path = input_path / "road_vertices.geojson"
+    centroid_dsomocy_path = input_path / "dolnoslaskie_tauron_moc.geojson" #"dostepnamoc_tauron.geojson"
 
     h_space = args.h_space
     v_space = args.v_space
@@ -924,6 +940,8 @@ def run_pipeline(args):
     temp_zonal_path = output_path / "temp_zonal.geojson"
     dem_zonal_path = output_path / "dem_zonal.geojson"
     final_mcdm_score_path = output_path / "final_mcdm_score.csv"
+    # additional work on tauron dso
+    centroid_score_box2dsomocy = output_path / "centroid_score_box2dsomocy.geojson"
 
 
     # allow choosing steps (0..8) or 'all'
@@ -931,11 +949,11 @@ def run_pipeline(args):
     if args.steps:
         for s in args.steps:
             if s == "all":
-                steps_to_run = set(map(str, range(0, 13)))
+                steps_to_run = set(map(str, range(0, 14)))
                 break
             steps_to_run.add(str(s))
     else:
-        steps_to_run = set(map(str, range(0, 12)))  # default: run all steps
+        steps_to_run = set(map(str, range(0, 14)))  # default: run all steps
 
     # util to check existence + force flag
     def should_run(path: Path, step_id: str):
@@ -1030,14 +1048,25 @@ def run_pipeline(args):
         print(f"Step 11: Extracting Land ratio → {land_ratio_path}")
         runner_PvLandUseRatio(str(box_path), str(land_use_path), str(land_ratio_path))
         df_land_ratio = save_geojson_and_csv(land_ratio_path,keep_geometry=True, model_name='data.LandRatio', region_name=region_name, id_name='osm_land_id',df_return=True)
-    print("Done. The algorithm has finished.")
+   
 
-    #
-    # 12) get the final score
-    if should_run(final_mcdm_score_path, "12"):
-        final_mcdm_score_path.parent.mkdir(parents=True, exist_ok=True)
-        final_df = runner_FinalScore(df_box, df_land_ratio,df_dso, df_plant,df_railway, df_road, df_dni, df_dem, df_pvout, df_temp)
-        save_final_score(final_df, output_path,"data.FinalScore",region_name)
+    ## additional work
+    # 3.1) Calculate distance centroid box to tauron dostepne mocy
+    if should_run(centroid_score_box2dsomocy, "12"):
+        centroid_score_box2dsomocy.parent.mkdir(parents=True, exist_ok=True)
+        print(f"Step : Creating score centroid box-dso → {centroid_score_box2dsomocy}")
+        runner_PV_Box2Dso(str(centroid_box_path), str(centroid_dsomocy_path), str(centroid_score_box2dsomocy))
+        df_dsomocy= save_geojson_and_csv(centroid_score_box2dsomocy,keep_geometry=True, model_name='data.CentroidBox2DsoMocy', region_name=region_name, id_name='osm_box2dsomocy_id',df_return=True)
+    
+    # # 12) get the final score
+    # if should_run(final_mcdm_score_path, "13"):
+    #     final_mcdm_score_path.parent.mkdir(parents=True, exist_ok=True)
+    #     print('working on final df')
+    #     final_df = runner_FinalScore(df_box, df_land_ratio,df_dso, df_plant,df_railway, df_road, df_dni, df_dem, df_pvout, df_temp,df_dsomocy)
+    #     final_df.to_csv(final_mcdm_score_path)
+
+    
+    print("Done. The algorithm has finished.")
 
 
 

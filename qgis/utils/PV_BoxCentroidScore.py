@@ -43,7 +43,7 @@ def box2dso(main_centroid: gpd.GeoDataFrame, secondary_centroid: gpd.GeoDataFram
 
     # prepare result (don’t mutate original)
     out = main_centroid.copy()
-    out["nearest_dso_id"] = secondary_centroid["id"].to_numpy()[idx_min]
+    out["nearest_dso_id"] = secondary_centroid["dso_id"].to_numpy()[idx_min]
     # keep x=lon, y=lat (no swap!)
     out["nearest_dso_x"]  = secondary_centroid["x"].to_numpy()[idx_min]
     out["nearest_dso_y"]  = secondary_centroid["y"].to_numpy()[idx_min]
@@ -68,10 +68,10 @@ def box2railway(main_centroid: gpd.GeoDataFrame, secondary_centroid: gpd.GeoData
 
     # prepare result (don’t mutate original)
     out = main_centroid.copy()
-    out["nearest_railway_id"] = secondary_centroid["osm_id"].to_numpy()[idx_min]
+    out["nearest_station_id"] = secondary_centroid["station_id"].to_numpy()[idx_min]
     # keep x=lon, y=lat (no swap!)
-    out["nearest_railway_x"] = secondary_centroid["x"].to_numpy()[idx_min]
-    out["nearest_railway_y"] = secondary_centroid["y"].to_numpy()[idx_min]
+    out["nearest_station_x"] = secondary_centroid["x"].to_numpy()[idx_min]
+    out["nearest_station_y"] = secondary_centroid["y"].to_numpy()[idx_min]
     out["distance_km"] = dist_min
 
     dmin, dmax = float(dist_min.min()), float(dist_min.max())
@@ -92,7 +92,7 @@ def box2road(main_centroid: gpd.GeoDataFrame, secondary_centroid: gpd.GeoDataFra
 
     # prepare result (don’t mutate original)
     out = main_centroid.copy()
-    out["nearest_road_id"] = secondary_centroid["osm_id"].to_numpy()[idx_min]
+    out["nearest_road_id"] = secondary_centroid["road_id"].to_numpy()[idx_min]
     # keep x=lon, y=lat (no swap!)
     out["nearest_road_x"] = secondary_centroid["x"].to_numpy()[idx_min]
     out["nearest_road_y"] = secondary_centroid["y"].to_numpy()[idx_min]
@@ -200,7 +200,7 @@ def box2road_kdtree(
 
     # Build output
     out = main_centroid.copy()
-    out["nearest_road_id"] = secondary_centroid["osm_id"].iloc[indices].to_numpy()
+    out["nearest_road_id"] = secondary_centroid["road_id"].iloc[indices].to_numpy()
     out["nearest_road_x"] = secondary_centroid["x"].iloc[indices].to_numpy()
     out["nearest_road_y"] = secondary_centroid["y"].iloc[indices].to_numpy()
     out["distance_km"] = distances_km
@@ -224,10 +224,10 @@ def box2plant(main_centroid: gpd.GeoDataFrame, secondary_centroid: gpd.GeoDataFr
 
     # prepare result (don’t mutate original)
     out = main_centroid.copy()
-    out["nearest_plant_id"] = secondary_centroid["osm_id"].to_numpy()[idx_min]
+    out["nearest_solar_id"] = secondary_centroid["solar_id"].to_numpy()[idx_min]
     # keep x=lon, y=lat (no swap!)
-    out["nearest_plant_x"]  = secondary_centroid["x"].to_numpy()[idx_min]
-    out["nearest_plant_y"]  = secondary_centroid["y"].to_numpy()[idx_min]
+    out["nearest_solar_x"]  = secondary_centroid["x"].to_numpy()[idx_min]
+    out["nearest_solar_y"]  = secondary_centroid["y"].to_numpy()[idx_min]
     out["distance_km"]    = dist_min
 
     dmin, dmax = float(dist_min.min()), float(dist_min.max())
@@ -291,9 +291,9 @@ def runner_PV_Box2Road(centroid_box_path, centroid_road_path, output_path):
     road_score = box2road_kdtree(box_gdf , road_gdf)
     convert_geojson(road_score, output_path)
 
-def runner_PV_Box2Plant(centroid_box_path, centroid_plant_path,source_name,output_path):
+def runner_PV_Box2Plant(centroid_box_path, centroid_plant_path,output_path): #source_name
     box_gdf = read_geojson(centroid_box_path)
-    plant_gdf = power_plant_filter(centroid_plant_path, source_name)
+    plant_gdf = read_geojson(centroid_plant_path)# power_plant_filter(centroid_plant_path, source_name)
     plant_score =  box2plant(box_gdf , plant_gdf)
     convert_geojson(plant_score, output_path)
     

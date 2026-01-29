@@ -60,3 +60,61 @@ WARNING: This will return a large amount of data and may take time to process.
 out body;
 >;
 out skel qt;
+
+
+
+
+## res solar
+
+[out:json][timeout:800];
+{{geocodeArea:Poland}}->.searchArea;
+
+(
+  // 1. Large-scale plants (The gold standard for accuracy)
+  nwr["power"="plant"]["plant:source"="solar"](area.searchArea);
+  
+  // 2. Generators with a high capacity (filtering for > 0.5MW to be safe)
+  // This catches professional farms where specific capacity data was entered.
+  nwr["power"="generator"]["generator:source"="solar"]["generator:output:electricity"~"MW"](area.searchArea);
+  
+  // 3. Large physical footprints 
+  // Filters for solar areas larger than 5,000 square meters (approx. utility size)
+  way["power"="generator"]["generator:source"="solar"](area.searchArea)(if:length() > 200);
+
+  // 4. Find individual solar panel arrays/generators
+  nwr["power"="generator"]["generator:source"="solar"](area.searchArea);
+
+  // 5. Catch any tagged with "industrial=solar_farm"
+  nwr["industrial"="solar_farm"](area.searchArea);
+
+);
+
+// Output with geometry for QGIS
+out body;
+>;
+out skel qt;
+
+### solar power plant
+
+[out:json][timeout:800];
+{{geocodeArea:Poland}}->.searchArea;
+
+(
+  // 1. Large-scale plants (The gold standard for accuracy)
+  nwr["power"="plant"]["plant:source"="solar"](area.searchArea);
+  
+  // 2. Generators with a high capacity (filtering for > 0.5MW to be safe)
+  // This catches professional farms where specific capacity data was entered.
+  nwr["power"="generator"]["generator:source"="solar"]["generator:output:electricity"~"MW"](area.searchArea);
+  
+  // 3. Large physical footprints 
+  // Filters for solar areas larger than 5,000 square meters (approx. utility size)
+  way["power"="generator"]["generator:source"="solar"](area.searchArea)(if:length() > 200);
+
+
+);
+
+// Output with geometry for QGIS
+out body;
+>;
+out skel qt;

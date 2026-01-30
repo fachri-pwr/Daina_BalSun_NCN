@@ -625,6 +625,11 @@ def run_pipeline(args):
         land_ratio_out.parent.mkdir(parents=True, exist_ok=True)
         print(f"Step 10: Extracting Land ratio → {land_ratio_out}")
         runner_PvLandUseRatio(str(grid_box_out), str(landuse_path), str(land_ratio_out))
+    
+    ## 12) Create Final Score
+    
+    ## 13) re run the MCDM algorith > get final result
+    
 
 
 

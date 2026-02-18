@@ -6,6 +6,9 @@ from shapely.geometry import shape
 from streamlit_folium import st_folium
 import folium
 from folium.plugins import MarkerCluster
+from branca.colormap import linear
+from branca.element import MacroElement
+from jinja2 import Template
 
 # --- Configuration ---
 st.set_page_config(layout="wide", page_title="GeoSpatial Rank Dashboard")
@@ -116,8 +119,28 @@ if "gdf" in st.session_state:
             tooltip=["box_id", "topsis_rank"],
             popup=SCORE_COLUMNS,
             tiles="CartoDB positron",
-            style_kwds=dict(weight=0.5, color="black", fillOpacity=0.6)
+            style_kwds=dict(weight=0.5, color="black", fillOpacity=0.2),
+            legend=False
         )
+        minv,maxv=float(filtered_gdf[score_type].min()),float(filtered_gdf[score_type].max())
+        cmap=linear.viridis.scale(minv,maxv).to_step(6)
+        cmap.caption=score_type
+        cmap.add_to(m)
+        
+        class ResizeLegend(MacroElement):
+            def __init__(self):
+                super().__init__()
+                self._template=Template("""
+                {% macro script(this, kwargs) %}
+                var bar=document.getElementsByClassName('legend')[0];
+                if(bar){
+                    bar.style.width='550px';
+                    bar.style.margin='0 auto';
+                }
+                {% endmacro %}
+                """)
+
+        m.get_root().add_child(ResizeLegend())
 
         # 2. OVERLAP BOUNDARY
         if show_boundary and boundary_geom:

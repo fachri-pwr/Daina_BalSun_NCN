@@ -948,7 +948,7 @@ if __name__ == "__main__":
     # ]
     
     regions_list = [
-        'wroclaw'
+        'wroclaw','dolnoslaskie'
     ]
 
     for region in regions_list:

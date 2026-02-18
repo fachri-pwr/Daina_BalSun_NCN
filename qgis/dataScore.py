@@ -7,6 +7,8 @@ from pathlib import Path
 import tempfile
 import fiona
 from functools import reduce
+import numpy as np
+from pymcdm.methods import TOPSIS
 
 # from backend.notebook.src.runner import df_box
 
@@ -65,6 +67,7 @@ print("Processing framework OK")
 import geopandas as gpd
 from shapely.geometry import shape
 from utils.PV_BoxCentroidScore import runner_PV_Box2Dso, runner_PV_Box2Plant , runner_PV_Box2Railway, runner_PV_Box2Road
+from utils.mcdm_score import mcdm_score_calculation
 
 
 ### ============================== EXTRACT THE SCORE ============================== ###
@@ -593,6 +596,54 @@ def final_score(extraction_path, final_score_out, region):
     final_df.to_file(final_score_out, driver='GeoJSON')
     print(f"Done! Final file saved: {final_score_out}")
 
+### ======================== MCDM Score
+
+def runnner_mcdm_score(input_path,output_path):
+    mcdm_score_gdf = mcdm_score_calculation(input_path)
+    mcdm_score_gdf.to_file(output_path, driver='GeoJSON')
+    print(f"Successfully saved MCDM score results to {output_path}")
+    
+
+# def mcdm_score(input_path,output_path):
+#     # 1. LOAD GEOJSON DATA
+#     gdf = gpd.read_file(input_path)
+
+#     # 2. PREPROCESSING
+#     # Clean up columns not needed for the math
+#     cols_to_drop = ['perimeter', 'region_name', 'area', 'fclass']
+#     gdf_reduced = gdf.drop(columns=cols_to_drop, errors='ignore')
+
+#     # 3. CONSTRUCT THE DECISION MATRIX
+#     # Ensure criteria_cols matches the data in your specific GeoJSON
+#     criteria_cols = [
+#         'dni_score', 'temp_score', 'pvout_score', 'dem_score', 
+#         'road_score', 'station_score', 'solar_score', 'dso_score', 'land_score'
+#     ]
+
+#     # Drop rows with missing values in these specific columns
+#     gdf_clean = gdf_reduced.dropna(subset=criteria_cols).copy()
+#     matrix = gdf_clean[criteria_cols].values
+
+#     # 4. DEFINE WEIGHTS & TYPES (Updated to 9 elements)
+#     # We must have exactly 9 weights to match the 9 criteria above
+#     weights = np.array([1/9] * 9) 
+
+#     # Types: 1 for Benefit (Higher is better), -1 for Cost (Lower is better)
+#     # Mapping based on typical solar MCDM logic:
+#     # dni(1), temp(-1), pvout(1), dem(-1), road(1), station(1), solar(1), dso(1), land(1)
+#     types = np.array([1, -1, 1, -1, 1, 1, 1, 1, 1]) 
+
+#     # 5. RUN THE MCDM MODEL (TOPSIS)
+#     topsis = TOPSIS()
+#     pref = topsis(matrix, weights, types)
+
+#     # Attach results
+#     gdf_clean['rank_score'] = pref
+#     gdf_clean['rank'] = gdf_clean['rank_score'].rank(ascending=False)
+
+#     # 6. SPATIAL VISUALIZATION (Adjusted for Wrocław)
+#     top_sites = gdf_clean.nsmallest(50, 'rank')
+#     top_sites.to_file(output_path, driver='GeoJSON')
 
 ### Run the PIPELINE ###
 
@@ -631,6 +682,7 @@ def run_pipeline(args):
     score_dem_out = extraction_path / 'score'/ region / f'score_dem_{region}.geojson'
     land_ratio_out = extraction_path / 'score'/ region / f'score_landRatio_{region}.geojson'
     final_score_out = extraction_path / 'score'/ region / f'final_score_{region}.geojson'
+    mcdm_score_out = extraction_path / 'score'/ region / f'mcdm_score_{region}.geojson'
     
   
    # allow choosing steps (0..etc) or 'all'
@@ -715,14 +767,22 @@ def run_pipeline(args):
     ## 11) Calculate land ratio 
     if should_run(land_ratio_out, "9",landuse_path):
         land_ratio_out.parent.mkdir(parents=True, exist_ok=True)
-        print(f"Step 10: Extracting Land ratio → {land_ratio_out}")
+        print(f"Step 10: Calcualte Land ratio → {land_ratio_out}")
         runner_PvLandUseRatio(str(grid_box_out), str(landuse_path), str(land_ratio_out))
     
-    ## 12) Calculate land ratio 
+    ## 12) Calculate the final score
     if should_run(final_score_out, "10",extraction_path):
         final_score_out.parent.mkdir(parents=True, exist_ok=True)
         print(f"Step 11: Creating final score for MCDM → {final_score_out}")
         final_score(str(extraction_path), str(final_score_out), region)
+    
+    ## 12) calcualting mcdm score
+    if should_run(mcdm_score_out, "11",final_score_out):
+        mcdm_score_out.parent.mkdir(parents=True, exist_ok=True)
+        print(f"Step 11: Calculate score for MCDM → {mcdm_score_out}")
+        runnner_mcdm_score(str(final_score_out), str(mcdm_score_out))
+     
+    
     
 
 
@@ -737,7 +797,7 @@ if __name__ == "__main__":
     #parser.add_argument("--extraction-path", type=str, required=True, help="Root output directory")
     
     regions_list = [
-        'wroclaw'
+        'wroclaw','dolnoslaskie'
     ]
     
 

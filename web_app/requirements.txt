@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+pydantic
+pydantic-settings
+psycopg2-binary
+requests
+geopandas
+shapely
+folium 
+matplotlib 
+mapclassify
+contextily
+streamlit
+watchdog
+streamlit-folium

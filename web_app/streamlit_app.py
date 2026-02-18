@@ -1,0 +1,152 @@
+import streamlit as st
+import requests
+import pandas as pd
+import geopandas as gpd
+from shapely.geometry import shape
+from streamlit_folium import st_folium
+import folium
+from folium.plugins import MarkerCluster
+
+# --- Configuration ---
+st.set_page_config(layout="wide", page_title="GeoSpatial Rank Dashboard")
+
+st.markdown("""
+    <style>
+    .number-icon {
+        background-color: white;
+        border: 2px solid #228B22;
+        border-radius: 50%;
+        color: black;
+        font-weight: bold;
+        text-align: center;
+        font-size: 11px;
+        line-height: 24px;
+        width: 25px;
+        height: 25px;
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+st.title("🌍 GeoSpatial Rank Dashboard")
+
+API_BASE_URL = "http://127.0.0.1:8000"
+SCORE_COLUMNS = ["box_id", "topsis_rank", "dni_score", "pvout_score",'dem_score','dso_score' ,"temp_score", "solar_score", "land_score",'road_score','station_score']
+
+# --- Sidebar ---
+st.sidebar.header("Data Management")
+region_name = st.sidebar.text_input("Enter Region Name", value="wroclaw")
+
+if st.sidebar.button("Fetch Data from API"):
+    with st.spinner(f"Fetching data for {region_name}..."):
+        score_url = f"{API_BASE_URL}/geojson/all/final_score/{region_name}"
+        boundary_url = f"{API_BASE_URL}/geojson/all/boundary/{region_name}"
+        
+        try:
+            # 1. Fetch Scores
+            score_res = requests.get(score_url)
+            # 2. Fetch Boundary
+            boundary_res = requests.get(boundary_url)
+
+            # --- Handle Scores ---
+            if score_res.status_code == 200:
+                data = score_res.json()
+                if data:
+                    df = pd.DataFrame(data)
+                    df = df.dropna(subset=['geometry'])
+                    df['geometry'] = df['geometry'].apply(lambda x: shape(x))
+                    
+                    for col in SCORE_COLUMNS:
+                        if col in df.columns and col != "box_id":
+                            df[col] = pd.to_numeric(df[col], errors='coerce')
+
+                    gdf = gpd.GeoDataFrame(df, geometry='geometry', crs="EPSG:2180")
+                    gdf = gdf.to_crs(epsg=4326)
+                    gdf['lat'] = gdf.geometry.centroid.y
+                    gdf['lon'] = gdf.geometry.centroid.x
+                    st.session_state["gdf"] = gdf
+
+            # --- Handle Boundary (FIXED FOR LIST RESPONSE) ---
+            if boundary_res.status_code == 200:
+                boundary_list = boundary_res.json()
+                # Check if the list is not empty before accessing index 0
+                if isinstance(boundary_list, list) and len(boundary_list) > 0:
+                    # Your API returns a list, so we take the first item
+                    st.session_state["boundary_data"] = boundary_list[0].get("geometry")
+                elif isinstance(boundary_list, dict):
+                    # Fallback if you later change API to return a single dict
+                    st.session_state["boundary_data"] = boundary_list.get("geometry")
+                else:
+                    st.session_state["boundary_data"] = None
+            else:
+                st.session_state["boundary_data"] = None
+                st.sidebar.warning("Boundary geometry not found.")
+
+            st.sidebar.success(f"Loaded {region_name}!")
+        except Exception as e:
+            st.sidebar.error(f"Error: {e}")
+
+# --- Main Logic ---
+if "gdf" in st.session_state:
+    gdf_web = st.session_state["gdf"]
+    boundary_geom = st.session_state.get("boundary_data")
+    
+    st.sidebar.markdown("---")
+    min_r, max_r = int(gdf_web['topsis_rank'].min()), int(gdf_web['topsis_rank'].max())
+    rank_range = st.sidebar.slider("Rank Range Filter", min_r, max_r, (min_r, min(min_r+20, max_r)))
+    
+    show_numbers = st.sidebar.checkbox("Show All Rank Numbers", value=True)
+    show_top_markers = st.sidebar.checkbox("Show Top 5 Pins (Red)", value=False)
+    use_clustering = st.sidebar.checkbox("Cluster Markers", value=True)
+    show_boundary = st.sidebar.checkbox("Show Region Boundary", value=True)
+
+    filtered_gdf = gdf_web[
+        (gdf_web['topsis_rank'] >= rank_range[0]) & 
+        (gdf_web['topsis_rank'] <= rank_range[1])
+    ].copy()
+
+    top_5_in_range = filtered_gdf.nsmallest(5, 'topsis_rank')['topsis_rank'].tolist()
+    score_type = st.selectbox("Color Map By:", SCORE_COLUMNS[1:]) 
+
+    if not filtered_gdf.empty:
+        # 1. Base Map with Grid
+        m = filtered_gdf.explore(
+            column=score_type,
+            cmap="viridis_r" if score_type == "topsis_rank" else "viridis",
+            tooltip=["box_id", "topsis_rank"],
+            popup=SCORE_COLUMNS,
+            tiles="CartoDB positron",
+            style_kwds=dict(weight=0.5, color="black", fillOpacity=0.6)
+        )
+
+        # 2. OVERLAP BOUNDARY
+        if show_boundary and boundary_geom:
+            folium.GeoJson(
+                boundary_geom,
+                name=f"{region_name} Boundary",
+                style_function=lambda x: {
+                    "fillColor": "none",
+                    "color": "#FF0000",
+                    "weight": 4,
+                    "dashArray": "5, 5"
+                }
+            ).add_to(m)
+
+        # 3. Markers
+        marker_target = MarkerCluster().add_to(m) if use_clustering else m
+        for _, row in filtered_gdf.iterrows():
+            rank_val = int(row['topsis_rank'])
+            if show_top_markers and rank_val in top_5_in_range:
+                folium.Marker(
+                    location=[row['lat'], row['lon']],
+                    icon=folium.Icon(color='red', icon='info-sign'),
+                    tooltip=f"Top Rank: {rank_val}"
+                ).add_to(m)
+            if show_numbers:
+                bg_color = "#FFD700" if rank_val <= 3 else "white"
+                icon_html = f'''<div class="number-icon" style="background-color: {bg_color};">{rank_val}</div>'''
+                folium.Marker(location=[row['lat'], row['lon']], icon=folium.DivIcon(html=icon_html)).add_to(marker_target)
+        
+        st_folium(m, width=1200, height=600, returned_objects=[])
+    else:
+        st.warning("No data found for this rank range.")

@@ -31,7 +31,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🌍 GeoSpatial Rank Dashboard")
+st.title("🌍 PV Location Rank Dashboard")
 
 API_BASE_URL = "http://127.0.0.1:8000"
 SCORE_COLUMNS = ["box_id", "topsis_rank", "dni_score", "pvout_score",'dem_score','dso_score' ,"temp_score", "solar_score", "land_score",'road_score','station_score']
@@ -171,5 +171,34 @@ if "gdf" in st.session_state:
                 folium.Marker(location=[row['lat'], row['lon']], icon=folium.DivIcon(html=icon_html)).add_to(marker_target)
         
         st_folium(m, width=1200, height=600, returned_objects=[])
+    # --- Table View ---
+        st.markdown("---")
+        st.subheader(f"📊 Detailed Data for {region_name}")
+        
+        # We sort by rank by default so the best locations are at the top
+        display_df = filtered_gdf.drop(columns=['geometry']).sort_values("topsis_rank")
+        display_df = display_df[['topsis_rank','id','box_id','lat','lon','area','perimeter','fclass','region_name','dni_score','dem_score','pvout_score','temp_score','dso_score','solar_score','station_score','road_score','land_score','topsis_score']]
+        
+        # Display the interactive dataframe
+        st.dataframe(
+            display_df,
+            use_container_width=True,
+            hide_index=True,
+            # column_config={
+            #     "topsis_rank": st.column_config.NumberColumn("Rank 🏆", format="%d"),
+            #     "box_id": "ID",
+            #     "dni_score": st.column_config.ProgressColumn("DNI Score", min_value=0, max_value=1),
+            #     "pvout_score": st.column_config.ProgressColumn("PVOUT Score", min_value=0, max_value=1),
+            # }
+        )
+
+        # Optional: Add a download button for the filtered data
+        csv = display_df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 Download Filtered Data as CSV",
+            data=csv,
+            file_name=f"{region_name}_rankings.csv",
+            mime="text/csv",
+        )
     else:
         st.warning("No data found for this rank range.")

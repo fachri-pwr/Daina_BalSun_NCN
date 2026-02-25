@@ -1,8 +1,37 @@
+# Data folders
 data/
-backend/.venv_backend
-backend/db.sqlite3
-qgis/.idea
-qgis/.venv_qgis
-web_app/.venv_web
-web_app/data_score
 
+# Backend
+backend/.venv_backend/
+backend/db.sqlite3
+
+# QGIS
+qgis/.idea/
+qgis/.venv_qgis/
+
+# Web app
+web_app/.venv_web/
+web_app/data_score/
+
+# Notebook environment
+notebook/.venv_notebook/
+notebook/data/
+notebook/iframe_figures/
+
+# File types inside notebook
+notebook/*.xlsx
+notebook/*.csv
+
+# Python cache and common ignores (recommended)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+
+# OS-specific
+.DS_Store
+Thumbs.db

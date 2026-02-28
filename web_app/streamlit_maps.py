@@ -170,7 +170,7 @@ if st.session_state["gdf"] is not None:
         folium.GeoJson(
             dynamic_top_5,
             name="Top 5 Highlight Lines",
-            style_function=lambda x: {'fillColor': 'none', 'color': '#00FF00', 'weight': 5}
+            style_function=lambda x: {'fillColor': 'none', 'color': '#f7d702', 'weight': 3, "dashArray": "3,5"}
         ).add_to(m)
 
         # Markers Logic
